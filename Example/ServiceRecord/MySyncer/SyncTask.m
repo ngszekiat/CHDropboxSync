@@ -14,11 +14,11 @@
 
 - (void)dealloc {
     self.path = nil;
-    [super dealloc];
+    //[super dealloc];
 }
 
 + (SyncTask*)syncTaskWithType:(SyncTaskType)taskType andPath:(NSString*)path {
-    SyncTask* st = [[[SyncTask alloc] init] autorelease];
+    SyncTask* st = [[SyncTask alloc] init];
     st.taskType = taskType;
     st.path = path;
     return st;

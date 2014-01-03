@@ -72,7 +72,7 @@
     self.alert = nil;
     self.lastTask = nil;
     self.lastAlertMessage = nil;
-    [super dealloc];
+    //[super dealloc];
 }
 
 #pragma mark - Maintenance
@@ -87,10 +87,10 @@
 
 // Make the 'please wait' alert view
 - (void)makeAlert {
-    self.alert = [[[UIAlertView alloc] initWithTitle:@"Syncing with Dropbox" message:@"Please wait...\n\n" delegate:nil cancelButtonTitle:nil otherButtonTitles:nil] autorelease];
+    self.alert = [[UIAlertView alloc] initWithTitle:@"Syncing with Dropbox" message:@"Please wait...\n\n" delegate:nil cancelButtonTitle:nil otherButtonTitles:nil];
     [alert show]; // Have to show the alert before we add subviews, because otherwise the alert.bounds is zero
     
-    UIActivityIndicatorView* act = [[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge] autorelease];
+    UIActivityIndicatorView* act = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
     act.frame = CGRectOffset(act.frame, alert.bounds.size.width/2 - act.frame.size.width/2,
                              alert.bounds.size.height/2 - act.frame.size.height/2 + 26);
     [act startAnimating];
@@ -156,7 +156,7 @@
     [self closeAlert];
     
     if (message) {
-        [[[[UIAlertView alloc] initWithTitle:@"Sync Error" message:message delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil] autorelease] show];
+        [[[UIAlertView alloc] initWithTitle:@"Sync Error" message:message delegate:nil cancelButtonTitle:@"Ok" otherButtonTitles:nil] show];
     }
     
     [self tellDelegateComplete];
@@ -403,7 +403,7 @@
     BOOL wifi = [[Reachability reachabilityForLocalWiFi] isReachableViaWiFi];
     NSString* message = wifi ? @"Synchronize with Dropbox?" :
         @"Are you sure you wish to synchronize with Dropbox? You're not on wifi - this may use a lot of your data usage.";
-    [[[[UIAlertView alloc] initWithTitle:nil message:message delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Sync", nil] autorelease] show];
+    [[[UIAlertView alloc] initWithTitle:nil message:message delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Sync", nil] show];
 }
 
 // Called when they confirm
@@ -419,7 +419,7 @@
 - (void)doSyncPostConfirmation {    
     [self makeAlert];
         
-    self.client = [[[DBRestClient alloc] initWithSession:[DBSession sharedSession]] autorelease];
+    self.client = [[DBRestClient alloc] initWithSession:[DBSession sharedSession]];
     self.client.delegate = self;
     
     // Get the current status of local and dropbox, and the status at the end of the last sync
@@ -470,8 +470,9 @@
     }
     
     // Pop the first item
-    SyncTask* task = [todo objectAtIndex:0];
-    [[task retain] autorelease];
+    SyncTask* myTask = [todo objectAtIndex:0];
+    __strong SyncTask* task = myTask;
+    //[[task retain] autorelease];
     [todo removeObjectAtIndex:0];
     self.lastTask = task; // So that the async callbacks will know which task we're working on
     
