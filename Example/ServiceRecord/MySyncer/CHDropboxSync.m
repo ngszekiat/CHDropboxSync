@@ -9,7 +9,6 @@
 //  For instance, what happens if the network connection fails half way through a sync, and then you re-sync later - anything get lost? My testing says this is fine, but it's your responsibility to test it thoroughly in your particular app.
 
 #import "CHDropboxSync.h"
-#import "ConciseKit.h"
 #import "DropboxSDK.h"
 #import "Reachability.h"
 #import "SyncTask.h"
@@ -99,13 +98,13 @@
 }
 
 - (void)alertMessage:(NSString*)msg {
-    alert.message = $str(@"%@\n\n", msg);
+    alert.message = [NSString stringWithFormat:@"%@\n\n", msg];
     self.lastAlertMessage = msg;
 }
 
 - (void)alertMessageAppendPercentage:(float)percent {
     if (percent<1) { // Don't report the 100% because that looks silly
-        alert.message = $str(@"%@\n(This task: %.0f%%)\n", lastAlertMessage, percent*100.0);
+        alert.message = [NSString stringWithFormat:@"%@\n(This task: %.0f%%)\n", lastAlertMessage, percent*100.0];
     }
 }
 
@@ -175,8 +174,8 @@
     NSMutableDictionary* folders = [NSMutableDictionary dictionary];
     
     // NSFileManager's enumeratorAtURL crashes! Don't use it
-    NSString* root = $.documentPath;
-    NSMutableSet* pathsToSearch = $mset(root);
+    NSString* root = [self documentsDirectoryURL].path;
+    NSMutableSet* pathsToSearch = [NSMutableSet setWithObject:root];
     while (pathsToSearch.count) {
         // Pop a path to search
         NSString* pathToSearch = [pathsToSearch anyObject];
@@ -193,9 +192,9 @@
             
             // Get the attributes
             NSDictionary* attribs = [[NSFileManager defaultManager] attributesOfItemAtPath:itemPath error:nil];
-            BOOL isDirectory = $eql([attribs $for:NSFileType], NSFileTypeDirectory);
-            BOOL isFile = $eql([attribs $for:NSFileType], NSFileTypeRegular);
-            NSDate* modified = [attribs $for:NSFileModificationDate];
+            BOOL isDirectory = [[attribs objectForKey:NSFileType] isEqualToString:NSFileTypeDirectory];
+            BOOL isFile = [[attribs objectForKey:NSFileType] isEqualToString:NSFileTypeRegular];
+            NSDate* modified = [attribs objectForKey:NSFileModificationDate];
             
             // Recurse if its a folder
             if (isDirectory) {
@@ -237,7 +236,7 @@
     self.remoteFileRevs = [NSMutableDictionary dictionary];
     self.remoteFileDates = [NSMutableDictionary dictionary];
     self.remoteFolders = [NSMutableDictionary dictionary];
-    self.remoteFoldersPendingMetadata = $mset(@"/");
+    self.remoteFoldersPendingMetadata = [NSMutableSet setWithObject:@"/"];
     [client loadMetadata:@"/"];
 }
 
@@ -481,11 +480,11 @@
     if (remaining == 1) {
         [self alertMessage:@"Final task..."];
     } else {
-        [self alertMessage:$str(@"%d tasks remaining...", remaining)];
+        [self alertMessage:[NSString stringWithFormat:@"%d tasks remaining...", remaining]];
     } 
     
     // Expand its path
-    NSString* localPath = [[$ documentPath] stringByAppendingPathComponent:task.path];
+    NSString* localPath = [[self documentsDirectoryURL].path stringByAppendingPathComponent:task.path];
     NSError* err = nil;
     
     // Do it!
@@ -505,7 +504,7 @@
             [[NSFileManager defaultManager] removeItemAtPath:localPath error:&err];
         }
         if (err) {
-            [self failure:$str(@"Error deleting local file %@: %@", task.path, err)];
+            [self failure:[NSString stringWithFormat:@"Error deleting local file %@: %@", task.path, err]];
         } else {
             [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
         }
@@ -514,7 +513,7 @@
     if (task.taskType == SyncTaskTypeFolderLocalAdd) {
         [[NSFileManager defaultManager] createDirectoryAtPath:localPath withIntermediateDirectories:YES attributes:nil error:&err];
         if (err) {
-            [self failure:$str(@"Error creating local folder %@: %@", task.path, err)];
+            [self failure: [NSString stringWithFormat:@"Error creating local folder %@: %@", task.path, err]];
         } else {
             [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
         }
@@ -524,7 +523,7 @@
             [[NSFileManager defaultManager] removeItemAtPath:localPath error:&err];
         }
         if (err) {
-            [self failure:$str(@"Error deleting local folder %@: %@", task.path, err)];
+            [self failure:[NSString stringWithFormat:@"Error deleting local folder %@: %@", task.path, err]];
         } else {
             [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
         }
@@ -543,7 +542,7 @@
     [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
 }
 - (void)restClient:(DBRestClient *)client createFolderFailedWithError:(NSError *)error {
-    [self failure:$str(@"Error creating dropbox folder: %@", error)];
+    [self failure:[NSString stringWithFormat:@"Error creating dropbox folder: %@", error]];
 }
      
          
@@ -551,25 +550,25 @@
     [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
 }
 - (void)restClient:(DBRestClient *)client deletePathFailedWithError:(NSError *)error {
-    [self failure:$str(@"Error deleting dropbox file/folder: %@", error)];
+    [self failure:[NSString stringWithFormat:@"Error deleting dropbox file/folder: %@", error]];
 }
 
          
 - (void)restClient:(DBRestClient *)client uploadedFile:(NSString *)destPath from:(NSString *)srcPath metadata:(DBMetadata *)metadata {
     // Now the file has uploaded, we need to set its 'last modified' date locally to match the date on dropbox.
     // Unfortunately we can't change the dropbox date to match the local date, which would be more appropriate, really.
-    NSDictionary* attr = $dict(metadata.lastModifiedDate, NSFileModificationDate);
+    NSDictionary* attr = [NSDictionary dictionaryWithObjectsAndKeys:metadata.lastModifiedDate, NSFileModificationDate, nil];
     NSError* err = nil;
     [[NSFileManager defaultManager] setAttributes:attr ofItemAtPath:srcPath error:&err];
     
     if (err) {
-        [self failure:$str(@"Error setting modified date: %@", err)];
+        [self failure:[NSString stringWithFormat:@"Error setting modified date: %@", err]];
     } else {
         [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
     }
 }
 - (void)restClient:(DBRestClient *)client uploadFileFailedWithError:(NSError *)error {
-    [self failure:$str(@"Error uploading to dropbox: %@", error)];
+    [self failure:[NSString stringWithFormat:@"Error uploading to dropbox: %@", error]];
 }
 - (void)restClient:(DBRestClient *)client uploadProgress:(CGFloat)progress forFile:(NSString *)destPath from:(NSString *)srcPath {
     [self alertMessageAppendPercentage:progress];
@@ -578,22 +577,26 @@
          
 - (void)restClient:(DBRestClient *)client loadedFile:(NSString *)destPath {
     // Now the file has downloaded, we need to set its 'last modified' date locally to match the date on dropbox
-    NSDate* lastModified = [remoteFileDates $for:lastTask.path];
-    NSDictionary* attr = $dict(lastModified, NSFileModificationDate);
+    NSDate* lastModified = [remoteFileDates objectForKey:lastTask.path];
+    NSDictionary* attr = [NSDictionary dictionaryWithObjectsAndKeys:lastModified, NSFileModificationDate, nil];
     NSError* err = nil;
     [[NSFileManager defaultManager] setAttributes:attr ofItemAtPath:destPath error:&err];
     
     if (err) {
-        [self failure:$str(@"Error setting modified date: %@", err)];
+        [self failure:[NSString stringWithFormat:@"Error setting modified date: %@", err]];
     } else {
         [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
     }
 }
 - (void)restClient:(DBRestClient *)client loadFileFailedWithError:(NSError *)error {
-    [self failure:$str(@"Error downloading from dropbox: %@", error)];
+    [self failure:[NSString stringWithFormat:@"Error downloading from dropbox: %@", error]];
 }
 - (void)restClient:(DBRestClient *)client loadProgress:(CGFloat)progress forFile:(NSString *)destPath {
     [self alertMessageAppendPercentage:progress];
+}
+
+- (NSURL*) documentsDirectoryURL {
+    return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
 }
 
 @end
