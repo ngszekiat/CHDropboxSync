@@ -77,7 +77,7 @@
 
 #pragma mark - Maintenance
 
-// Call this when they unlink or link their dropbox account, to forget the last sync status
+// Call this when they unlink or link their Dropbox account, to forget the last sync status
 + (void)forgetStatus {
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:defaultsFiles];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:defaultsFolders];
@@ -184,7 +184,7 @@
         // Scan it
         NSArray* contents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:pathToSearch error:nil];
         for (NSString* item in contents) {
-            // Skip hidden/system files - you may want to change this if your files start with ., however dropbox errors on many 'ignored' files such as .DS_Store which you'll want to skip
+            // Skip hidden/system files - you may want to change this if your files start with ., however Dropbox errors on many 'ignored' files such as .DS_Store which you'll want to skip
             if ([item hasPrefix:@"."]) continue;
             
             // Item is a file or a folder
@@ -240,7 +240,7 @@
     [client loadMetadata:@"/"];
 }
 
-// Called by dropbox when the metadata for a folder has returned
+// Called by Dropbox when the metadata for a folder has returned
 - (void)restClient:(DBRestClient*)_client loadedMetadata:(DBMetadata*)metadata {
     for (DBMetadata* item in metadata.contents) {
         if (item.isDirectory) {
@@ -263,7 +263,7 @@
     }
 }
 
-// Called by dropbox upon failure
+// Called by Dropbox upon failure
 - (void)restClient:(DBRestClient*)client loadMetadataFailedWithError:(NSError*)error {
     [self failure:@"Couldn't get file list from Dropbox"];
 }
@@ -282,11 +282,11 @@
         BOOL isLastSync = [lastSyncFolders objectForKey:folder] != nil;
         
         if (isLocal && !isRemote) {
-            // We have it, dropbox doesn't
+            // We have it, Dropbox doesn't
             
             // Start off with: we were last synced fine, then all 3 used to be true
             
-            // If was deleted from dropbox, then we sync
+            // If was deleted from Dropbox, then we sync
             // Then isLastSync would be true, isRemote false
             // And we'd need to delete locally
             
@@ -306,13 +306,13 @@
             }
         }
         if (isRemote && !isLocal) {
-            // We don't have it, dropbox does
+            // We don't have it, Dropbox does
             
             // If was removed locally since last sync
             // then isLastSync=true
             // and we'd need to remove it remotely
             
-            // If was added to dropbox since last sync
+            // If was added to Dropbox since last sync
             // then isLastSync=false
             // and we'd need to add it locally
             
@@ -349,7 +349,7 @@
                 // And if so, keep both and rename the older one '*_conflicted'
                 if (local.timeIntervalSinceReferenceDate > remote.timeIntervalSinceReferenceDate) {
                     // Local is newer
-                    // So send the local file to dropbox
+                    // So send the local file to Dropbox
                     [todo addObject:[SyncTask syncTaskWithType:SyncTaskTypeFileUpload andPath:file]];
                 } else {
                     // Remote is newer
@@ -373,7 +373,7 @@
                 }
             }
             if (local && !remote) {
-                // We have it, dropbox doesn't
+                // We have it, Dropbox doesn't
                 // If it was added locally since last sync, it won't be in our sync list, so upload it
                 // If it was deleted from db since last sync, it will be in our sync list, so delete it locally
                 // If never synced, it won't be in our sync list, so upload it
@@ -393,9 +393,9 @@
 
 // Note that whomever calls this must retain this instance until it's finished
 - (void)doSync {
-    // Check dropbox is ready
+    // Check Dropbox is ready
     if (![[DBSession sharedSession] isLinked]) {
-        [self failure:@"Cannot sync, dropbox isn't linked"];
+        [self failure:@"Cannot sync, Dropbox isn't linked"];
         return;
     }
 
@@ -422,7 +422,7 @@
     self.client = [[DBRestClient alloc] initWithSession:[DBSession sharedSession]];
     self.client.delegate = self;
     
-    // Get the current status of local and dropbox, and the status at the end of the last sync
+    // Get the current status of local and Dropbox, and the status at the end of the last sync
     NSDictionary* files;
     NSDictionary* folders;
     [self getLocalStatusForFiles:&files andFolders:&folders];
@@ -432,17 +432,17 @@
     self.lastSyncFiles = [[NSUserDefaults standardUserDefaults] dictionaryForKey:defaultsFiles];
     self.lastSyncFolders = [[NSUserDefaults standardUserDefaults] dictionaryForKey:defaultsFolders];
 
-    // Get the current status of dropbox
+    // Get the current status of Dropbox
     [self alertMessage:@"Comparing..."];
     [self startGettingRemoteMetadata];
     // Once that finishes, we continue at 'remoteMetadataComplete'
 }
 
-// Called when the current status metadata is gotten from dropbox
+// Called when the current status metadata is gotten from Dropbox
 - (void)remoteMetadataComplete {
     
     // Now we get down to figuring out what needs to be done
-    // Strategy is: compare local vs dropbox, if there's a difference, use the last sync to hint what happened
+    // Strategy is: compare local vs Dropbox, if there's a difference, use the last sync to hint what happened
     
     // Make the todo-list for sync operations. Folders adds first, then file ops, then folder deletions last
     self.todo = [NSMutableArray array];
@@ -543,7 +543,7 @@
     [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
 }
 - (void)restClient:(DBRestClient *)client createFolderFailedWithError:(NSError *)error {
-    [self failure:[NSString stringWithFormat:@"Error creating dropbox folder: %@", error]];
+    [self failure:[NSString stringWithFormat:@"Error creating Dropbox folder: %@", error]];
 }
      
          
@@ -551,13 +551,13 @@
     [self performSelector:@selector(doTodoItem) withObject:nil afterDelay:0.001]; // Then do the next item on the todo list
 }
 - (void)restClient:(DBRestClient *)client deletePathFailedWithError:(NSError *)error {
-    [self failure:[NSString stringWithFormat:@"Error deleting dropbox file/folder: %@", error]];
+    [self failure:[NSString stringWithFormat:@"Error deleting Dropbox file/folder: %@", error]];
 }
 
          
 - (void)restClient:(DBRestClient *)client uploadedFile:(NSString *)destPath from:(NSString *)srcPath metadata:(DBMetadata *)metadata {
-    // Now the file has uploaded, we need to set its 'last modified' date locally to match the date on dropbox.
-    // Unfortunately we can't change the dropbox date to match the local date, which would be more appropriate, really.
+    // Now the file has uploaded, we need to set its 'last modified' date locally to match the date on Dropbox.
+    // Unfortunately we can't change the Dropbox date to match the local date, which would be more appropriate, really.
     NSDictionary* attr = [NSDictionary dictionaryWithObjectsAndKeys:metadata.lastModifiedDate, NSFileModificationDate, nil];
     NSError* err = nil;
     [[NSFileManager defaultManager] setAttributes:attr ofItemAtPath:srcPath error:&err];
@@ -569,7 +569,7 @@
     }
 }
 - (void)restClient:(DBRestClient *)client uploadFileFailedWithError:(NSError *)error {
-    [self failure:[NSString stringWithFormat:@"Error uploading to dropbox: %@", error]];
+    [self failure:[NSString stringWithFormat:@"Error uploading to Dropbox: %@", error]];
 }
 - (void)restClient:(DBRestClient *)client uploadProgress:(CGFloat)progress forFile:(NSString *)destPath from:(NSString *)srcPath {
     [self alertMessageAppendPercentage:progress];
@@ -577,7 +577,7 @@
 
          
 - (void)restClient:(DBRestClient *)client loadedFile:(NSString *)destPath {
-    // Now the file has downloaded, we need to set its 'last modified' date locally to match the date on dropbox
+    // Now the file has downloaded, we need to set its 'last modified' date locally to match the date on Dropbox
     NSDate* lastModified = [remoteFileDates objectForKey:lastTask.path];
     NSDictionary* attr = [NSDictionary dictionaryWithObjectsAndKeys:lastModified, NSFileModificationDate, nil];
     NSError* err = nil;
@@ -590,7 +590,7 @@
     }
 }
 - (void)restClient:(DBRestClient *)client loadFileFailedWithError:(NSError *)error {
-    [self failure:[NSString stringWithFormat:@"Error downloading from dropbox: %@", error]];
+    [self failure:[NSString stringWithFormat:@"Error downloading from Dropbox: %@", error]];
 }
 - (void)restClient:(DBRestClient *)client loadProgress:(CGFloat)progress forFile:(NSString *)destPath {
     [self alertMessageAppendPercentage:progress];
